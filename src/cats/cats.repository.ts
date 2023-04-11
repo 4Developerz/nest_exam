@@ -1,12 +1,17 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cat } from './cats.schema';
-import { Model } from 'mongoose';
+import * as mongoose from 'mongoose';
 import { CatRequestDto } from './dto/cats.request.dto';
+import { Comments } from 'src/comments/comments.schema';
+import { Model, Types } from 'mongoose';
 
 @Injectable()
 export class CatsRepository {
-  constructor(@InjectModel(Cat.name) private readonly catModel: Model<Cat>) {}
+  constructor(
+    @InjectModel(Cat.name) private readonly catModel: Model<Cat>,
+    @InjectModel(Comments.name) private readonly commentModel: Model<Comment>,
+  ) {}
 
   async existsByEmail(email: string): Promise<boolean> {
     const result = await this.catModel.exists({ email });
@@ -20,14 +25,20 @@ export class CatsRepository {
   }
 
   async findAll() {
-    return await this.catModel.find();
+    const result = await this.catModel
+      .find()
+      .populate({ path: 'comments', model: this.commentModel });
+
+    return result;
   }
 
   async create(cat: CatRequestDto): Promise<Cat> {
     return await this.catModel.create(cat);
   }
 
-  async findCatByIdWithoutPassword(catId: string): Promise<Cat | null> {
+  async findCatByIdWithoutPassword(
+    catId: string | Types.ObjectId,
+  ): Promise<Cat | null> {
     // -password : password제외하고 셀렉
     const cat = await this.catModel.findById(catId).select('-password');
     return cat;
